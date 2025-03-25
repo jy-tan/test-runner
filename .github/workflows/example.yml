@@ -1,0 +1,31 @@
+name: Tusk Test Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      runId:
+        description: "Tusk Run ID"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  test-action:
+    name: Tusk Test Runner
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Start runner
+        id: test-action
+        uses: ./
+        with:
+          runId: ${{ github.event.inputs.runId }}
+          tuskUrl: ${{ secrets.TUSK_URL }}
+          authToken: ${{ secrets.AUTH_TOKEN }}
+          testScript: "cat {{ file }}"
+          lintScript: "echo 'linting'"

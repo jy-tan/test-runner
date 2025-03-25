@@ -1,20 +1,14 @@
 {
-  "name": "typescript-action",
-  "description": "GitHub Actions TypeScript template",
+  "name": "test-runner",
+  "description": "GitHub Action to run Tusk tests",
   "version": "0.0.0",
   "author": "",
   "type": "module",
   "private": true,
-  "homepage": "https://github.com/actions/typescript-action",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
-  },
-  "bugs": {
-    "url": "https://github.com/actions/typescript-action/issues"
-  },
+  "homepage": "https://usetusk.ai",
   "keywords": [
-    "actions"
+    "tusk",
+    "test"
   ],
   "exports": {
     ".": "./dist/index.js"
@@ -37,13 +31,16 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^1.11.1",
+    "axios": "^1.8.2",
+    "handlebars": "^4.7.8"
   },
   "devDependencies": {
     "@eslint/compat": "^1.2.7",
     "@github/local-action": "^3.1.0",
     "@jest/globals": "^29.7.0",
     "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.1",
     "@types/jest": "^29.5.14",
