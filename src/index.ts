@@ -42,18 +42,8 @@ async function run() {
     const startTime = Date.now();
     const endTime = startTime + pollingDuration * 1000;
 
-    // let counter = 0; // For testing
-
     while (Date.now() < endTime) {
       try {
-        // if (counter >= 1) {
-        //   await new Promise((resolve) => setTimeout(resolve, 10_000));
-        //   core.info("Stopping");
-        //   break;
-        // }
-
-        // counter++;
-
         core.info(
           `Polling server for commands (${Math.round((endTime - Date.now()) / 1000)}s remaining)...`,
         );
@@ -121,8 +111,6 @@ async function run() {
 
       await new Promise((resolve) => setTimeout(resolve, pollingInterval * 1000));
     }
-
-    // await new Promise((resolve) => setTimeout(resolve, 10_000));
 
     core.info("Long-polling completed successfully");
   } catch (error) {

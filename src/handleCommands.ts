@@ -56,12 +56,24 @@ export async function processCommand({
   // Ensure directory exists
   await fs.mkdir(path.dirname(fullFilePath), { recursive: true });
 
-  core.info(`Writing file to ${fullFilePath}`);
-  await fs.writeFile(fullFilePath, data.fileContents, { encoding: "utf8" });
-
   let lastCommandStdout = "";
   let lastCommandStderr = "";
   let lastCommandExitCode = 0;
+
+  if (actions.includes(FileAction.WRITE)) {
+    core.info("Writing file");
+
+    if (!data.fileContents) {
+      core.error("File contents are required for write action");
+      lastCommandStdout = "";
+      lastCommandStderr = "File contents are required for write action";
+      lastCommandExitCode = 1;
+      return;
+    }
+
+    await fs.writeFile(fullFilePath, data.fileContents, { encoding: "utf8" });
+    core.info(`File written to ${fullFilePath}`);
+  }
 
   if (actions.includes(FileAction.LINT)) {
     core.info("Linting file");
@@ -77,6 +89,22 @@ export async function processCommand({
       lastCommandExitCode = result.exitCode;
     } catch (err) {
       core.error(`Failed to execute lint command: ${err}`);
+      lastCommandStdout = "";
+      lastCommandStderr = String(err);
+      lastCommandExitCode = 1;
+    }
+  }
+
+  if (actions.includes(FileAction.READ)) {
+    try {
+      core.info("Reading file");
+      const fileContents = await fs.readFile(fullFilePath, { encoding: "utf8" });
+      core.info(`File contents: ${fileContents}`);
+      lastCommandStdout = fileContents;
+      lastCommandStderr = "";
+      lastCommandExitCode = 0;
+    } catch (err) {
+      core.error(`Failed to read file: ${err}`);
       lastCommandStdout = "";
       lastCommandStderr = String(err);
       lastCommandExitCode = 1;
@@ -132,38 +160,6 @@ export async function processCommand({
     core.warning(`Failed to send result for command ${command.id}, server is probably not running`);
   }
 }
-
-// async function executeScript(
-//   script: string,
-//   cwd: string,
-//   commandType: string,
-// ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-//   core.info(`Executing ${commandType.toLowerCase()} script: ${script}`);
-
-//   return new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolve) => {
-//     let stdout = "";
-//     let stderr = "";
-//     let exitCode = 0;
-
-//     const childProcess = exec(script, { cwd }, (error, stdoutResult, stderrResult) => {
-//       stdout = stdoutResult;
-//       stderr = stderrResult;
-
-//       if (stdout) core.info(`${commandType} stdout: ${stdout}`);
-//       if (stderr) core.warning(`${commandType} stderr: ${stderr}`);
-
-//       if (error) {
-//         core.warning(`${commandType} error: ${error.message}`);
-//       }
-//     });
-
-//     childProcess.on("exit", (code) => {
-//       exitCode = code || 0;
-//       core.info(`${commandType} command exited with code ${exitCode}`);
-//       resolve({ stdout, stderr, exitCode });
-//     });
-//   });
-// }
 
 async function executeScript(
   script: string,

@@ -1,40 +1,3 @@
-// export interface BaseCommand {
-//   id: string;
-//   type: string;
-// }
-
-// export interface RunScriptData {
-//   filePath: string;
-//   fileContents: string;
-//   script: string;
-//   originalFilePath?: string;
-//   appDir?: string;
-// }
-
-// export interface RunScriptCommand extends BaseCommand {
-//   id: string;
-//   type: "run-script";
-//   data: RunScriptData;
-// }
-
-// export interface TerminateCommand extends BaseCommand {
-//   id: string;
-//   type: "terminate";
-// }
-
-// export type Command = RunScriptCommand | TerminateCommand;
-
-// export interface PollCommandsResponse {
-//   commands: Command[];
-// }
-
-// export type CommandResult = {
-//   exitCode: number;
-//   error?: string;
-//   stdout: string;
-//   stderr: string;
-// };
-
 export interface BaseCommand {
   id: string;
   createdAt: Date;
@@ -42,12 +5,14 @@ export interface BaseCommand {
 
 export interface FileData {
   filePath: string;
-  fileContents: string;
+  fileContents?: string;
   originalFilePath?: string;
   appDir?: string;
 }
 
 export enum FileAction {
+  READ = "read",
+  WRITE = "write",
   LINT = "lint",
   TEST = "test",
   COVERAGE = "coverage",
