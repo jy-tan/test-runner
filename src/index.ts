@@ -1,14 +1,13 @@
-import axios from "axios";
 import * as core from "@actions/core";
-import { Command, FileCommand, RunnerAction, Scripts } from "./types.js";
+import { FileCommand, RunnerAction, Scripts } from "./types.js";
 import { processCommand } from "./handleCommands.js";
+import { ackCommand, pollCommands } from "./requests.js";
 
 async function run() {
   core.info("Starting runner...");
 
   try {
     const runId = core.getInput("runId", { required: true });
-
     core.info(`Run ID: ${runId}`);
 
     const testScript = core.getInput("testScript", { required: true });
@@ -20,15 +19,8 @@ async function run() {
       coverage: coverageScript,
     };
 
-    const serverUrl = core.getInput("tuskUrl", { required: true });
-    const authToken = core.getInput("authToken", { required: true });
     const pollingDuration = parseInt(core.getInput("pollingDuration") || "1800", 10); // Default 30 minutes
     const pollingInterval = parseInt(core.getInput("pollingInterval") || "5", 10); // Default 5 seconds
-
-    const headers = {
-      Authorization: `Bearer ${authToken}`,
-      "Content-Type": "application/json",
-    };
 
     // Get GitHub context
     // Full list: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
@@ -42,22 +34,22 @@ async function run() {
     const startTime = Date.now();
     const endTime = startTime + pollingDuration * 1000;
 
+    // Counter for consecutive polling errors
+    const MAX_CONSECUTIVE_ERRORS = 5;
+    let consecutiveErrorCount = 0;
+
     while (Date.now() < endTime) {
       try {
         core.info(
           `Polling server for commands (${Math.round((endTime - Date.now()) / 1000)}s remaining)...`,
         );
 
-        const response = await axios.get(`${serverUrl}/poll-commands`, {
-          params: {
-            runId,
-            runnerMetadata,
-          },
-          timeout: (pollingInterval + 5) * 1000,
-          headers,
+        const commands = await pollCommands({
+          runId,
+          runnerMetadata,
         });
 
-        const commands = response.data.commands as Command[];
+        consecutiveErrorCount = 0;
 
         if (commands.length > 0) {
           core.info("Received commands from server");
@@ -67,19 +59,12 @@ async function run() {
               (cmd) => cmd.type == "runner" && cmd.actions.includes(RunnerAction.TERMINATE),
             )
           ) {
-            // Ack the terminate command before exiting?
-            await axios.post(
-              `${serverUrl}/ack-command`,
-              {
-                runId,
-                commandId: commands.find(
-                  (cmd) => cmd.type == "runner" && cmd.actions.includes(RunnerAction.TERMINATE),
-                )?.id,
-              },
-              {
-                headers,
-              },
-            );
+            await ackCommand({
+              runId,
+              commandId: commands.find(
+                (cmd) => cmd.type == "runner" && cmd.actions.includes(RunnerAction.TERMINATE),
+              )!.id,
+            });
 
             core.info("Terminate command received, exiting...");
             break;
@@ -89,9 +74,7 @@ async function run() {
 
           // Not awaiting here to avoid blocking the main thread
           Promise.all(
-            fileCommands.map((command) =>
-              processCommand({ runId, command, serverUrl, authToken, scripts }),
-            ),
+            fileCommands.map((command) => processCommand({ runId, command, scripts })),
           ).catch((error) => {
             core.warning(`Error in command batch processing: ${error}`);
           });
@@ -103,7 +86,16 @@ async function run() {
         if (error instanceof Error && error.message.includes("ECONNABORTED")) {
           core.debug("Polling timeout (expected)");
         } else {
-          core.warning(`Polling error: ${error}`);
+          consecutiveErrorCount++;
+          core.warning(
+            `Polling error: ${error} (consecutive errors: ${consecutiveErrorCount}/${MAX_CONSECUTIVE_ERRORS})`,
+          );
+
+          if (consecutiveErrorCount >= MAX_CONSECUTIVE_ERRORS) {
+            core.setFailed("Max consecutive polling errors reached, exiting...");
+            break;
+          }
+
           // Wait before retrying to avoid hammering the server
           await new Promise((resolve) => setTimeout(resolve, 5000));
         }

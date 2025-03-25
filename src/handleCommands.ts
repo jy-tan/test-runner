@@ -1,44 +1,23 @@
-import axios from "axios";
 import * as core from "@actions/core";
 import { FileAction, FileCommand, FileCommandResult, Scripts } from "./types.js";
 import { exec } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
 import Handlebars from "handlebars";
+import { ackCommand, sendCommandResult } from "./requests.js";
 
 export async function processCommand({
   command,
   runId,
-  serverUrl,
-  authToken,
   scripts,
 }: {
   command: FileCommand;
   runId: string;
-  serverUrl: string;
-  authToken: string;
   scripts: Scripts;
 }): Promise<void> {
   const { data, actions } = command;
 
-  // Ack the command
-  const ackResponse = await axios.post(
-    `${serverUrl}/ack-command`,
-    {
-      runId,
-      commandId: command.id,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    },
-  );
-
-  if (ackResponse.status !== 200) {
-    core.warning(`Failed to acknowledge command ${command.id}, server is probably not running`);
-    return;
-  }
+  await ackCommand({ runId, commandId: command.id });
 
   // Write the file first
   // Use appDir if provided, otherwise use repo root
@@ -141,24 +120,7 @@ export async function processCommand({
     error: lastCommandExitCode !== 0 ? lastCommandStderr : undefined,
   };
 
-  // Send the result back to the server
-  const resultResponse = await axios.post(
-    `${serverUrl}/command-result`,
-    {
-      runId,
-      result: commandResult,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-        "Content-Type": "application/json",
-      },
-    },
-  );
-
-  if (resultResponse.status !== 200) {
-    core.warning(`Failed to send result for command ${command.id}, server is probably not running`);
-  }
+  await sendCommandResult({ runId, result: commandResult });
 }
 
 async function executeScript(
