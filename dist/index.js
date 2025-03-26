@@ -55991,6 +55991,8 @@ async function run() {
     try {
         const runId = coreExports.getInput("runId", { required: true });
         coreExports.info(`Run ID: ${runId}`);
+        const commitSha = coreExports.getInput("commitSha", { required: true });
+        coreExports.info(`Commit SHA: ${commitSha}`);
         const testScript = coreExports.getInput("testScript", { required: true });
         const lintScript = coreExports.getInput("lintScript", { required: true });
         const coverageScript = coreExports.getInput("coverageScript", { required: false });
@@ -56006,7 +56008,7 @@ async function run() {
         const runnerMetadata = {
             githubRepo: process.env.GITHUB_REPOSITORY,
             githubRef: process.env.GITHUB_REF,
-            githubSha: process.env.GITHUB_SHA,
+            commitSha,
         };
         // Start polling for commands
         const startTime = Date.now();
