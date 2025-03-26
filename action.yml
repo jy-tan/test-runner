@@ -13,6 +13,9 @@ inputs:
   tuskUrl:
     description: "Tusk server URL"
     required: true
+  commitSha:
+    description: "Commit SHA to checkout"
+    required: true
   authToken:
     description: "Tusk server authentication token"
     required: true

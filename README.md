@@ -18,7 +18,7 @@ When you push new commits, Tusk runs against your commit changes and generates t
 
 Add the following workflow to your `.github/workflows` folder and adapt inputs accordingly. If your repo requires additional setup steps, add them before the `Start runner` step.
 
-```
+```yml
 name: Tusk Test Runner
 
 on:
@@ -30,6 +30,9 @@ on:
       tuskUrl:
         description: "Tusk server URL"
         required: true
+      commitSha:
+        description: "Commit SHA to checkout"
+        required: true
 
 jobs:
   test-action:
@@ -40,6 +43,8 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commitSha }}
 
       - name: Start runner
         id: test-action
@@ -47,10 +52,13 @@ jobs:
         with:
           runId: ${{ github.event.inputs.runId }}
           tuskUrl: ${{ github.event.inputs.tuskUrl }}
+          commitSha: ${{ github.event.inputs.commitSha }}
           authToken: ${{ secrets.TUSK_AUTH_TOKEN }}
           lintScript: "black {{file}}"
           testScript: "pytest {{file}}"
 ```
+
+In your lint and test scripts, use `{{file}}` as a placeholder for where a specific file path will be inserted. This will be replaced by actual paths for test files that Tusk is working on at runtime.
 
 ## Contact
 
