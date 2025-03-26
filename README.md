@@ -27,6 +27,9 @@ on:
       runId:
         description: "Tusk Run ID"
         required: true
+      tuskUrl:
+        description: "Tusk server URL"
+        required: true
 
 jobs:
   test-action:
@@ -43,11 +46,10 @@ jobs:
         uses: UseTusk/test-runner@v1
         with:
           runId: ${{ github.event.inputs.runId }}
-          tuskUrl: <Tusk server URL>
-          authToken: <Tusk auth token>
-          lintScript: <your lint script>
-          testScript: <your test script>
-          coverageScript: <your coverage script>
+          tuskUrl: ${{ github.event.inputs.tuskUrl }}
+          authToken: ${{ secrets.TUSK_AUTH_TOKEN }}
+          lintScript: "black {{file}}"
+          testScript: "pytest {{file}}"
 ```
 
 ## Contact

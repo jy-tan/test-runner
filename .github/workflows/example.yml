@@ -6,9 +6,9 @@ on:
       runId:
         description: "Tusk Run ID"
         required: true
-
-permissions:
-  contents: read
+      tuskUrl:
+        description: "Tusk server URL"
+        required: true
 
 jobs:
   test-action:
@@ -25,7 +25,7 @@ jobs:
         uses: ./
         with:
           runId: ${{ github.event.inputs.runId }}
-          tuskUrl: ${{ secrets.TUSK_URL }}
-          authToken: ${{ secrets.AUTH_TOKEN }}
-          testScript: "cat {{ file }}"
-          lintScript: "echo 'linting'"
+          tuskUrl: ${{ github.event.inputs.tuskUrl }}
+          authToken: ${{ secrets.TUSK_AUTH_TOKEN }}
+          lintScript: "black {{file}}"
+          testScript: "pytest {{file}}"
