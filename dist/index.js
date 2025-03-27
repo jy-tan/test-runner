@@ -55833,6 +55833,30 @@ const headers = {
     Authorization: `Bearer ${authToken}`,
     "Content-Type": "application/json",
 };
+async function withRetry(requestFn, maxRetries = 3) {
+    let lastError = null;
+    for (let attempt = 0; attempt < maxRetries + 1; attempt++) {
+        try {
+            return await requestFn();
+        }
+        catch (error) {
+            lastError = error;
+            // Check if it's a 503 error that we should retry
+            if (axios.isAxiosError(error) && error.response?.status === 503) {
+                if (attempt < maxRetries) {
+                    const delayMs = 2 ** attempt * 1000; // Exponential backoff: 1s, 2s, 4s
+                    coreExports.info(`Received 503 error, retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`);
+                    await new Promise((resolve) => setTimeout(resolve, delayMs));
+                    continue;
+                }
+            }
+            // For non-503 errors or if we've exhausted retries, throw the error
+            throw error;
+        }
+    }
+    // This should never happen, but TypeScript needs it
+    throw lastError;
+}
 const pollCommands = async ({ runId, runnerMetadata, }) => {
     const response = await axios.get(`${serverUrl}/poll-commands`, {
         params: {
@@ -55846,31 +55870,35 @@ const pollCommands = async ({ runId, runnerMetadata, }) => {
     return response.data.commands;
 };
 const ackCommand = async ({ runId, commandId, }) => {
-    const response = await axios.post(`${serverUrl}/ack-command`, {
-        runId,
-        commandId,
-    }, {
-        headers,
-        timeout: timeoutMs,
-        signal: AbortSignal.timeout(5_000),
+    return withRetry(async () => {
+        const response = await axios.post(`${serverUrl}/ack-command`, {
+            runId,
+            commandId,
+        }, {
+            headers,
+            timeout: timeoutMs,
+            signal: AbortSignal.timeout(5_000),
+        });
+        if (response.status !== 200) {
+            coreExports.warning(`Failed to ack command ${commandId}, server is probably not running`);
+        }
+        return response.data;
     });
-    if (response.status !== 200) {
-        coreExports.warning(`Failed to ack command ${commandId}, server is probably not running`);
-    }
-    return response.data;
 };
 const sendCommandResult = async ({ runId, result, }) => {
-    const response = await axios.post(`${serverUrl}/command-result`, {
-        runId,
-        result,
-    }, {
-        headers,
-        timeout: timeoutMs,
-        signal: AbortSignal.timeout(5_000),
+    return withRetry(async () => {
+        const response = await axios.post(`${serverUrl}/command-result`, {
+            runId,
+            result,
+        }, {
+            headers,
+            timeout: timeoutMs,
+            signal: AbortSignal.timeout(5_000),
+        });
+        if (response.status !== 200) {
+            coreExports.warning(`Failed to send result for command ${result.commandId}, server is probably not running`);
+        }
     });
-    if (response.status !== 200) {
-        coreExports.warning(`Failed to send result for command ${result.commandId}, server is probably not running`);
-    }
 };
 
 async function processCommand({ command, runId, scripts, }) {
@@ -56025,7 +56053,10 @@ async function run() {
                 });
                 consecutiveErrorCount = 0;
                 if (commands.length > 0) {
-                    coreExports.info("Received commands from server");
+                    coreExports.info(`Received ${commands.length} commands from server`);
+                    commands.forEach((cmd) => {
+                        coreExports.info(`Command:\n${JSON.stringify(cmd, null, 2)}`);
+                    });
                     if (commands.some((cmd) => cmd.type == "runner" && cmd.actions.includes(RunnerAction.TERMINATE))) {
                         await ackCommand({
                             runId,

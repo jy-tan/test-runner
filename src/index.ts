@@ -55,7 +55,11 @@ async function run() {
         consecutiveErrorCount = 0;
 
         if (commands.length > 0) {
-          core.info("Received commands from server");
+          core.info(`Received ${commands.length} commands from server`);
+
+          commands.forEach((cmd) => {
+            core.info(`Command:\n${JSON.stringify(cmd, null, 2)}`);
+          });
 
           if (
             commands.some(
