@@ -8,6 +8,7 @@ export interface FileData {
   fileContents?: string;
   originalFilePath?: string;
   appDir?: string;
+  testFilePaths?: string[]; // For test coverage
 }
 
 export enum FileAction {
@@ -55,6 +56,6 @@ export type CommandResult = FileCommandResult | RunnerCommandResult;
 
 export interface Scripts {
   test: string;
-  lint: string;
-  coverage: string;
+  lint?: string;
+  coverage?: string;
 }

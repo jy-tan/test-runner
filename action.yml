@@ -24,7 +24,7 @@ inputs:
     required: true
   lintScript:
     description: "Lint script to run"
-    required: true
+    required: false
   coverageScript:
     description: "Coverage script to run"
     required: false

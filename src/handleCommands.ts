@@ -54,7 +54,7 @@ export async function processCommand({
     core.info(`File written to ${fullFilePath}`);
   }
 
-  if (actions.includes(FileAction.LINT)) {
+  if (scripts.lint && actions.includes(FileAction.LINT)) {
     core.info("Linting file");
     const lintTemplate = Handlebars.compile(scripts.lint);
     const processedLintScript = lintTemplate({
@@ -104,6 +104,43 @@ export async function processCommand({
       lastCommandExitCode = result.exitCode;
     } catch (err) {
       core.error(`Failed to execute test command: ${err}`);
+      lastCommandStdout = "";
+      lastCommandStderr = String(err);
+      lastCommandExitCode = 1;
+    }
+  }
+
+  if (scripts.coverage && actions.includes(FileAction.COVERAGE)) {
+    core.info("Generating coverage report");
+
+    const writtenFilePaths = command.data.testFilePaths;
+
+    if (!writtenFilePaths) {
+      core.error("Test file paths are required for coverage action");
+      lastCommandStdout = "";
+      lastCommandStderr = "Test file paths are required for coverage action";
+      lastCommandExitCode = 1;
+      return;
+    }
+
+    const relativeFilePaths = writtenFilePaths.map((filePath) =>
+      baseDir ? path.relative(baseDir, filePath) : filePath,
+    );
+
+    const testFilePaths = relativeFilePaths.join(" ");
+
+    const coverageTemplate = Handlebars.compile(scripts.coverage);
+    const processedCoverageScript = coverageTemplate({
+      testFilePaths,
+    });
+
+    try {
+      const result = await executeScript(processedCoverageScript, baseDir, "Coverage");
+      lastCommandStdout = result.stdout;
+      lastCommandStderr = result.stderr;
+      lastCommandExitCode = result.exitCode;
+    } catch (err) {
+      core.error(`Failed to execute coverage command: ${err}`);
       lastCommandStdout = "";
       lastCommandStderr = String(err);
       lastCommandExitCode = 1;

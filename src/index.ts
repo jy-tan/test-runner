@@ -14,8 +14,8 @@ async function run() {
     core.info(`Commit SHA: ${commitSha}`);
 
     const testScript = core.getInput("testScript", { required: true });
-    const lintScript = core.getInput("lintScript", { required: true });
-    const coverageScript = core.getInput("coverageScript", { required: false });
+    const lintScript = core.getInput("lintScript", { required: false }) || undefined;
+    const coverageScript = core.getInput("coverageScript", { required: false }) || undefined;
     const scripts: Scripts = {
       test: testScript,
       lint: lintScript,
